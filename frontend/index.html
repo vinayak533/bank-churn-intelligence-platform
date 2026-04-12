@@ -1,0 +1,752 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>ARIA — Churn Intelligence Platform</title>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;400;500;600&family=DM+Mono:wght@300;400;500&family=Outfit:wght@200;300;400;500;600&display=swap" rel="stylesheet"/>
+<style>
+  :root {
+    --black: #050508;
+    --surface: #0c0c14;
+    --card: #11111d;
+    --border: rgba(255,255,255,0.06);
+    --gold: #c9a84c;
+    --gold-light: #e8c97a;
+    --gold-dim: rgba(201,168,76,0.15);
+    --cyan: #4fc3f7;
+    --red: #ef5350;
+    --green: #66bb6a;
+    --amber: #ffa726;
+    --text: #e8e6f0;
+    --muted: rgba(232,230,240,0.45);
+    --font-display: 'Cormorant Garamond', serif;
+    --font-mono: 'DM Mono', monospace;
+    --font-body: 'Outfit', sans-serif;
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html { scroll-behavior: smooth; }
+
+  body {
+    background: var(--black);
+    color: var(--text);
+    font-family: var(--font-body);
+    font-weight: 300;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* ── NOISE OVERLAY ── */
+  body::before {
+    content: '';
+    position: fixed; inset: 0;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.03'/%3E%3C/svg%3E");
+    pointer-events: none; z-index: 9999; opacity: 0.4;
+  }
+
+  /* ── AMBIENT ORBS ── */
+  .orb {
+    position: fixed; border-radius: 50%;
+    filter: blur(120px); pointer-events: none; z-index: 0;
+  }
+  .orb-1 { width: 600px; height: 600px; background: radial-gradient(circle, rgba(201,168,76,0.08), transparent 70%); top: -200px; right: -100px; }
+  .orb-2 { width: 500px; height: 500px; background: radial-gradient(circle, rgba(79,195,247,0.05), transparent 70%); bottom: -100px; left: -100px; }
+  .orb-3 { width: 300px; height: 300px; background: radial-gradient(circle, rgba(201,168,76,0.06), transparent 70%); top: 40%; left: 30%; animation: drift 12s ease-in-out infinite; }
+
+  @keyframes drift {
+    0%, 100% { transform: translate(0, 0); }
+    50% { transform: translate(30px, -40px); }
+  }
+
+  /* ── LAYOUT ── */
+  .wrap { position: relative; z-index: 1; max-width: 1280px; margin: 0 auto; padding: 0 40px; }
+
+  /* ── HEADER ── */
+  header {
+    padding: 28px 0;
+    border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: space-between;
+    position: sticky; top: 0; background: rgba(5,5,8,0.85);
+    backdrop-filter: blur(20px); z-index: 100;
+  }
+
+  .logo {
+    display: flex; align-items: center; gap: 14px;
+  }
+  .logo-icon {
+    width: 38px; height: 38px;
+    background: linear-gradient(135deg, var(--gold), var(--gold-light));
+    border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 18px;
+  }
+  .logo-name {
+    font-family: var(--font-display);
+    font-size: 26px; font-weight: 500; letter-spacing: 3px;
+    color: var(--gold-light);
+  }
+  .logo-sub {
+    font-family: var(--font-mono);
+    font-size: 10px; letter-spacing: 2px; color: var(--muted);
+    text-transform: uppercase; margin-top: 2px;
+  }
+
+  .header-status {
+    display: flex; align-items: center; gap: 8px;
+    font-family: var(--font-mono); font-size: 11px; color: var(--muted);
+  }
+  .status-dot {
+    width: 7px; height: 7px; border-radius: 50%;
+    background: var(--green);
+    box-shadow: 0 0 8px var(--green);
+    animation: pulse-dot 2s ease infinite;
+  }
+  @keyframes pulse-dot { 0%,100%{opacity:1} 50%{opacity:0.4} }
+
+  /* ── HERO ── */
+  .hero {
+    padding: 80px 0 60px;
+    text-align: center;
+  }
+  .hero-badge {
+    display: inline-flex; align-items: center; gap: 8px;
+    border: 1px solid rgba(201,168,76,0.3);
+    border-radius: 100px; padding: 6px 18px;
+    font-family: var(--font-mono); font-size: 11px;
+    color: var(--gold); letter-spacing: 2px; text-transform: uppercase;
+    margin-bottom: 32px;
+    background: rgba(201,168,76,0.05);
+  }
+  .hero h1 {
+    font-family: var(--font-display);
+    font-size: clamp(48px, 7vw, 88px);
+    font-weight: 300; line-height: 1.05;
+    letter-spacing: -1px;
+    background: linear-gradient(135deg, #fff 30%, var(--gold-light) 70%, var(--gold) 100%);
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    background-clip: text;
+    margin-bottom: 20px;
+  }
+  .hero p {
+    font-size: 17px; color: var(--muted); max-width: 560px; margin: 0 auto 48px;
+    line-height: 1.7; font-weight: 300;
+  }
+
+
+
+  /* ── FORM STYLES ── */
+  .form-grid {
+    display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px;
+    margin-bottom: 32px;
+  }
+  .form-group { display: flex; flex-direction: column; gap: 8px; }
+  .form-group label {
+    font-family: var(--font-mono); font-size: 10px;
+    letter-spacing: 2px; color: var(--muted); text-transform: uppercase;
+  }
+  .form-group input, .form-group select {
+    background: rgba(255,255,255,0.03);
+    border: 1px solid var(--border);
+    border-radius: 10px; padding: 13px 16px;
+    color: var(--text); font-family: var(--font-body);
+    font-size: 14px; font-weight: 400;
+    outline: none; transition: all 0.2s;
+    -webkit-appearance: none;
+  }
+  .form-group input:focus, .form-group select:focus {
+    border-color: rgba(201,168,76,0.4);
+    background: rgba(201,168,76,0.03);
+    box-shadow: 0 0 0 3px rgba(201,168,76,0.06);
+  }
+  .form-group select option { background: var(--surface); }
+
+  /* ── BUTTON ── */
+  .btn-primary {
+    width: 100%; padding: 18px;
+    background: linear-gradient(135deg, var(--gold) 0%, var(--gold-light) 50%, var(--gold) 100%);
+    background-size: 200% 100%;
+    border: none; border-radius: 12px;
+    font-family: var(--font-body); font-size: 15px; font-weight: 500;
+    color: #0a0800; cursor: pointer; letter-spacing: 1px;
+    transition: all 0.4s; position: relative; overflow: hidden;
+  }
+  .btn-primary:hover {
+    background-position: right center;
+    box-shadow: 0 8px 40px rgba(201,168,76,0.35);
+    transform: translateY(-1px);
+  }
+  .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+
+  /* ── MAIN GRID ── */
+  .main-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-top: 40px; }
+
+  /* ── CARD ── */
+  .card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 20px; padding: 32px;
+    position: relative; overflow: hidden;
+  }
+  .card::before {
+    content: '';
+    position: absolute; top: 0; left: 0; right: 0; height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(201,168,76,0.4), transparent);
+  }
+  .card-title {
+    font-family: var(--font-mono); font-size: 10px;
+    letter-spacing: 3px; color: var(--muted); text-transform: uppercase;
+    margin-bottom: 24px;
+  }
+
+  /* ── RESULT DISPLAY ── */
+  .result-hidden { display: none; }
+
+  .probability-ring {
+    display: flex; flex-direction: column; align-items: center;
+    justify-content: center; margin: 0 auto 32px;
+    width: 200px; height: 200px; position: relative;
+  }
+  .ring-svg { width: 200px; height: 200px; transform: rotate(-90deg); }
+  .ring-bg { fill: none; stroke: rgba(255,255,255,0.05); stroke-width: 8; }
+  .ring-fill { fill: none; stroke-width: 8; stroke-linecap: round; transition: stroke-dashoffset 1.5s cubic-bezier(0.4,0,0.2,1); }
+  .ring-center {
+    position: absolute; inset: 0;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+  }
+  .ring-pct {
+    font-family: var(--font-display); font-size: 44px; font-weight: 500;
+    line-height: 1;
+  }
+  .ring-label {
+    font-family: var(--font-mono); font-size: 10px;
+    letter-spacing: 2px; color: var(--muted); margin-top: 4px;
+  }
+
+  .risk-badge {
+    display: inline-flex; align-items: center; gap: 8px;
+    border-radius: 100px; padding: 8px 20px;
+    font-family: var(--font-mono); font-size: 12px; letter-spacing: 2px;
+    font-weight: 500; text-transform: uppercase; margin: 0 auto 24px;
+  }
+  .risk-HIGH { background: rgba(239,83,80,0.12); border: 1px solid rgba(239,83,80,0.3); color: var(--red); }
+  .risk-MEDIUM { background: rgba(255,167,38,0.12); border: 1px solid rgba(255,167,38,0.3); color: var(--amber); }
+  .risk-LOW { background: rgba(102,187,106,0.12); border: 1px solid rgba(102,187,106,0.3); color: var(--green); }
+
+  /* ── FACTORS ── */
+  .factor-item {
+    display: flex; align-items: center; gap: 12px;
+    margin-bottom: 14px;
+  }
+  .factor-name { font-size: 13px; color: var(--muted); width: 140px; flex-shrink: 0; }
+  .factor-bar-wrap { flex: 1; background: rgba(255,255,255,0.04); border-radius: 4px; height: 6px; overflow: hidden; }
+  .factor-bar { height: 100%; border-radius: 4px; background: linear-gradient(90deg, var(--gold), var(--gold-light)); transition: width 1s ease; }
+  .factor-val { font-family: var(--font-mono); font-size: 11px; color: var(--muted); width: 40px; text-align: right; }
+
+  /* ── CHATBOT ── */
+  .chat-wrap { grid-column: 1 / -1; }
+
+  .chat-messages {
+    min-height: 220px; max-height: 380px;
+    overflow-y: auto; margin-bottom: 20px;
+    padding-right: 4px;
+  }
+  .chat-messages::-webkit-scrollbar { width: 4px; }
+  .chat-messages::-webkit-scrollbar-track { background: transparent; }
+  .chat-messages::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+
+  .msg {
+    display: flex; gap: 14px; margin-bottom: 20px;
+    animation: fadein 0.4s ease;
+  }
+  @keyframes fadein { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:none} }
+
+  .msg-avatar {
+    width: 36px; height: 36px; border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 16px; flex-shrink: 0;
+  }
+  .msg-aria .msg-avatar { background: linear-gradient(135deg, var(--gold), var(--gold-light)); color: #0a0800; }
+  .msg-user .msg-avatar { background: rgba(255,255,255,0.06); }
+
+  .msg-bubble {
+    background: rgba(255,255,255,0.03);
+    border: 1px solid var(--border);
+    border-radius: 0 14px 14px 14px;
+    padding: 14px 18px; font-size: 14px; line-height: 1.65;
+    color: var(--text); max-width: 620px;
+  }
+  .msg-user .msg-bubble { border-radius: 14px 0 14px 14px; margin-left: auto; }
+  .msg-user { flex-direction: row-reverse; }
+
+  .chat-input-wrap { display: flex; gap: 12px; }
+  .chat-input {
+    flex: 1; background: rgba(255,255,255,0.03);
+    border: 1px solid var(--border); border-radius: 12px;
+    padding: 14px 18px; color: var(--text);
+    font-family: var(--font-body); font-size: 14px; outline: none;
+    transition: all 0.2s;
+  }
+  .chat-input:focus { border-color: rgba(201,168,76,0.3); }
+
+  .btn-send {
+    padding: 14px 24px; background: var(--gold-dim);
+    border: 1px solid rgba(201,168,76,0.3); border-radius: 12px;
+    color: var(--gold); font-family: var(--font-body); font-size: 14px;
+    cursor: pointer; transition: all 0.2s; white-space: nowrap;
+  }
+  .btn-send:hover { background: rgba(201,168,76,0.2); }
+
+  .btn-voice {
+    padding: 14px 18px; background: rgba(79,195,247,0.08);
+    border: 1px solid rgba(79,195,247,0.2); border-radius: 12px;
+    color: var(--cyan); font-size: 18px;
+    cursor: pointer; transition: all 0.2s;
+  }
+  .btn-voice:hover { background: rgba(79,195,247,0.15); }
+  .btn-voice.playing { animation: voice-pulse 1s ease infinite; }
+  @keyframes voice-pulse { 0%,100%{box-shadow:0 0 0 0 rgba(79,195,247,0.3)} 50%{box-shadow:0 0 0 10px transparent} }
+
+  /* ── AUDIO VISUALIZER ── */
+  .audio-bar-wrap {
+    display: flex; align-items: flex-end; gap: 3px;
+    height: 32px; margin-bottom: 16px; display: none;
+  }
+  .audio-bar-wrap.active { display: flex; }
+  .audio-bar {
+    width: 4px; border-radius: 2px;
+    background: linear-gradient(to top, var(--gold), var(--gold-light));
+    animation: bar-dance 0.8s ease infinite;
+  }
+  .audio-bar:nth-child(1){height:30%;animation-delay:0s}
+  .audio-bar:nth-child(2){height:70%;animation-delay:0.1s}
+  .audio-bar:nth-child(3){height:50%;animation-delay:0.2s}
+  .audio-bar:nth-child(4){height:90%;animation-delay:0.15s}
+  .audio-bar:nth-child(5){height:60%;animation-delay:0.05s}
+  .audio-bar:nth-child(6){height:40%;animation-delay:0.25s}
+  .audio-bar:nth-child(7){height:80%;animation-delay:0.1s}
+  .audio-bar:nth-child(8){height:55%;animation-delay:0.2s}
+  @keyframes bar-dance {
+    0%,100%{transform:scaleY(1)} 50%{transform:scaleY(0.3)}
+  }
+
+  /* ── LOADING ── */
+  .spinner {
+    width: 20px; height: 20px; border: 2px solid rgba(255,255,255,0.1);
+    border-top-color: var(--gold); border-radius: 50%;
+    animation: spin 0.8s linear infinite; display: inline-block;
+    vertical-align: middle; margin-right: 8px;
+  }
+  @keyframes spin { to{transform:rotate(360deg)} }
+
+  /* ── DIVIDER ── */
+  .divider {
+    height: 1px; background: linear-gradient(90deg, transparent, var(--border), transparent);
+    margin: 12px 0;
+  }
+
+  /* ── TYPING INDICATOR ── */
+  .typing-dot {
+    display: inline-block; width: 6px; height: 6px; border-radius: 50%;
+    background: var(--muted); margin: 0 2px;
+    animation: typing 1.2s ease infinite;
+  }
+  .typing-dot:nth-child(2){animation-delay:0.2s}
+  .typing-dot:nth-child(3){animation-delay:0.4s}
+  @keyframes typing { 0%,60%,100%{transform:translateY(0)} 30%{transform:translateY(-6px)} }
+
+  /* ── TOAST ── */
+  .toast {
+    position: fixed; bottom: 30px; right: 30px;
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: 12px; padding: 14px 22px;
+    font-size: 13px; color: var(--text);
+    display: none; z-index: 1000;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+    animation: slide-in 0.3s ease;
+  }
+  @keyframes slide-in { from{transform:translateY(20px);opacity:0} to{transform:none;opacity:1} }
+
+  /* ── RESPONSIVE ── */
+  @media (max-width: 900px) {
+    .form-grid { grid-template-columns: 1fr 1fr; }
+    .main-grid { grid-template-columns: 1fr; }
+    .wrap { padding: 0 20px; }
+  }
+  @media (max-width: 600px) {
+    .form-grid { grid-template-columns: 1fr; }
+  }
+
+  /* ── SECTION LABEL ── */
+  .section-head {
+    display: flex; align-items: center; gap: 16px;
+    margin-bottom: 32px;
+  }
+  .section-head h2 {
+    font-family: var(--font-display); font-size: 32px; font-weight: 400;
+    color: var(--text);
+  }
+  .section-num {
+    font-family: var(--font-mono); font-size: 11px; letter-spacing: 2px;
+    color: var(--gold); border: 1px solid rgba(201,168,76,0.3);
+    border-radius: 6px; padding: 4px 10px;
+  }
+
+  .full-width { grid-column: 1 / -1; }
+
+  .text-center { text-align: center; }
+</style>
+</head>
+<body>
+
+<div class="orb orb-1"></div>
+<div class="orb orb-2"></div>
+<div class="orb orb-3"></div>
+
+<!-- HEADER -->
+<header>
+  <div class="wrap" style="display:flex;align-items:center;justify-content:space-between;width:100%;max-width:100%">
+    <div class="logo">
+      <div class="logo-icon">⬡</div>
+      <div>
+        <div class="logo-name">ARIA</div>
+        <div class="logo-sub">Churn Intelligence Platform</div>
+      </div>
+    </div>
+    <div class="header-status">
+      <div class="status-dot"></div>
+      <span id="backend-status">Connecting…</span>
+    </div>
+  </div>
+</header>
+
+<div class="wrap">
+
+  <!-- HERO -->
+  <div class="hero">
+    <div class="hero-badge">⬡ AI-Powered · XGBoost + LLaMA 3 · ElevenLabs Voice</div>
+    <h1>Predict.<br/>Understand.<br/>Retain.</h1>
+    <p>Enterprise-grade churn intelligence. Feed in customer data, get instant predictions explained in plain English — and hear them spoken aloud.</p>
+  </div>
+
+
+
+  <!-- CUSTOMER FORM -->
+  <div class="card" style="margin-bottom:0">
+    <div class="section-head">
+      <span class="section-num">01</span>
+      <h2>Customer Profile</h2>
+    </div>
+
+    <div class="form-grid">
+      <div class="form-group">
+        <label>Credit Score</label>
+        <input type="number" id="CreditScore" placeholder="300 – 850" value="650"/>
+      </div>
+      <div class="form-group">
+        <label>Age</label>
+        <input type="number" id="Age" placeholder="18 – 95" value="38"/>
+      </div>
+      <div class="form-group">
+        <label>Gender</label>
+        <select id="Gender">
+          <option value="1">Male</option>
+          <option value="0">Female</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Geography</label>
+        <select id="Geography">
+          <option value="France">France</option>
+          <option value="Germany">Germany</option>
+          <option value="Spain">Spain</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Tenure (Years)</label>
+        <input type="number" id="Tenure" placeholder="0 – 10" value="3"/>
+      </div>
+      <div class="form-group">
+        <label>Account Balance ($)</label>
+        <input type="number" id="Balance" placeholder="0 – 250000" value="75000"/>
+      </div>
+      <div class="form-group">
+        <label>Number of Products</label>
+        <input type="number" id="NumOfProducts" placeholder="1 – 4" value="2"/>
+      </div>
+      <div class="form-group">
+        <label>Has Credit Card</label>
+        <select id="HasCrCard">
+          <option value="1">Yes</option>
+          <option value="0">No</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Active Member</label>
+        <select id="IsActiveMember">
+          <option value="1">Yes</option>
+          <option value="0">No</option>
+        </select>
+      </div>
+      <div class="form-group" style="grid-column:1/-1">
+        <label>Estimated Annual Salary ($)</label>
+        <input type="number" id="EstimatedSalary" placeholder="0 – 200000" value="60000"/>
+      </div>
+    </div>
+
+    <button class="btn-primary" id="predict-btn" onclick="runPrediction()">
+      ⬡ &nbsp; Analyse Customer
+    </button>
+  </div>
+
+  <!-- RESULTS + CHATBOT -->
+  <div class="main-grid result-hidden" id="results-section">
+
+    <!-- LEFT: RESULT -->
+    <div class="card">
+      <div class="card-title">◈ Prediction Result</div>
+
+      <div class="probability-ring">
+        <svg class="ring-svg" viewBox="0 0 200 200">
+          <circle class="ring-bg" cx="100" cy="100" r="84"/>
+          <circle class="ring-fill" id="ring-fill" cx="100" cy="100" r="84"
+            stroke-dasharray="528" stroke-dashoffset="528"/>
+        </svg>
+        <div class="ring-center">
+          <div class="ring-pct" id="ring-pct">0%</div>
+          <div class="ring-label">CHURN RISK</div>
+        </div>
+      </div>
+
+      <div class="text-center" style="margin-bottom:20px">
+        <div class="risk-badge" id="risk-badge">—</div>
+      </div>
+
+      <div class="divider"></div>
+
+      <div style="margin-top:20px">
+        <div class="card-title">◈ Top Influencing Factors</div>
+        <div id="factors-list"></div>
+      </div>
+    </div>
+
+    <!-- RIGHT: CHATBOT -->
+    <div class="card">
+      <div class="card-title">◈ ARIA — AI Advisor</div>
+
+      <div class="audio-bar-wrap" id="audio-bars">
+        <div class="audio-bar"></div><div class="audio-bar"></div>
+        <div class="audio-bar"></div><div class="audio-bar"></div>
+        <div class="audio-bar"></div><div class="audio-bar"></div>
+        <div class="audio-bar"></div><div class="audio-bar"></div>
+      </div>
+
+      <div class="chat-messages" id="chat-messages"></div>
+
+      <div class="chat-input-wrap">
+        <input class="chat-input" id="chat-input"
+          placeholder="Ask ARIA to explain the prediction…"
+          onkeydown="if(event.key==='Enter')sendChat()"/>
+        <button class="btn-voice" id="voice-btn" title="Play last response" onclick="replayVoice()">🔊</button>
+        <button class="btn-send" onclick="sendChat()">Send →</button>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- TOAST -->
+<div class="toast" id="toast"></div>
+
+<script>
+const API = 'http://127.0.0.1:8000';
+let predictionContext = {};
+let lastAudioUrl = null;
+let currentAudio = null;
+
+// ── Health check ──
+async function checkBackend() {
+  try {
+    const r = await fetch(`${API}/health`);
+    const d = await r.json();
+    document.getElementById('backend-status').textContent =
+      d.model_loaded ? 'Model Ready' : 'Warming up…';
+  } catch {
+    document.getElementById('backend-status').textContent = 'Backend Offline';
+  }
+}
+checkBackend();
+
+// ── Toast ──
+function toast(msg, dur=3000) {
+  const el = document.getElementById('toast');
+  el.textContent = msg; el.style.display = 'block';
+  setTimeout(() => el.style.display='none', dur);
+}
+
+// ── Prediction ──
+async function runPrediction() {
+  const btn = document.getElementById('predict-btn');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span> Analysing…';
+
+  const geo = document.getElementById('Geography').value;
+  const payload = {
+    CreditScore: +document.getElementById('CreditScore').value,
+    Gender: +document.getElementById('Gender').value,
+    Age: +document.getElementById('Age').value,
+    Tenure: +document.getElementById('Tenure').value,
+    Balance: +document.getElementById('Balance').value,
+    NumOfProducts: +document.getElementById('NumOfProducts').value,
+    HasCrCard: +document.getElementById('HasCrCard').value,
+    IsActiveMember: +document.getElementById('IsActiveMember').value,
+    EstimatedSalary: +document.getElementById('EstimatedSalary').value,
+    Geography_Germany: geo==='Germany'?1:0,
+    Geography_Spain: geo==='Spain'?1:0
+  };
+
+  try {
+    const r = await fetch(`${API}/predict`, {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify(payload)
+    });
+    const data = await r.json();
+    predictionContext = data;
+    renderResult(data);
+    document.getElementById('results-section').classList.remove('result-hidden');
+    document.getElementById('results-section').scrollIntoView({behavior:'smooth'});
+    setTimeout(() => autoExplain(data), 600);
+  } catch(e) {
+    toast('❌ Backend unreachable. Is the server running?');
+  }
+
+  btn.disabled = false;
+  btn.innerHTML = '⬡ &nbsp; Analyse Customer';
+}
+
+// ── Render Result ──
+function renderResult(data) {
+  const pct = Math.round(data.probability);
+  const circumference = 528;
+  const offset = circumference - (pct / 100) * circumference;
+  const color = pct > 65 ? '#ef5350' : pct > 35 ? '#ffa726' : '#66bb6a';
+
+  const ring = document.getElementById('ring-fill');
+  ring.style.stroke = color;
+  setTimeout(() => ring.style.strokeDashoffset = offset, 100);
+
+  // Animate number
+  let cur = 0;
+  const step = () => {
+    if (cur < pct) { cur++; document.getElementById('ring-pct').textContent = cur+'%'; requestAnimationFrame(step); }
+  };
+  step();
+
+  const badge = document.getElementById('risk-badge');
+  badge.className = 'risk-badge risk-'+data.risk_level;
+  badge.innerHTML = `<span>●</span> ${data.risk_level} RISK`;
+
+  // Factors
+  const fl = document.getElementById('factors-list');
+  fl.innerHTML = '';
+  const maxImp = Math.max(...data.top_factors.map(f=>f.importance));
+  data.top_factors.forEach(f => {
+    const pctBar = Math.round((f.importance / maxImp) * 100);
+    fl.innerHTML += `
+      <div class="factor-item">
+        <div class="factor-name">${f.feature.replace(/_/g,' ')}</div>
+        <div class="factor-bar-wrap"><div class="factor-bar" style="width:${pctBar}%"></div></div>
+        <div class="factor-val">${(f.importance*100).toFixed(1)}%</div>
+      </div>`;
+  });
+}
+
+// ── Auto explain on first predict ──
+async function autoExplain(data) {
+  addMsg('aria', `<span class="typing-dot"></span><span class="typing-dot"></span><span class="typing-dot"></span>`);
+  await callChat("Please explain this churn prediction result in simple terms for a bank manager.", data);
+}
+
+// ── Send Chat ──
+async function sendChat() {
+  const input = document.getElementById('chat-input');
+  const msg = input.value.trim();
+  if (!msg) return;
+  input.value = '';
+  addMsg('user', msg);
+  addMsg('aria', `<span class="typing-dot"></span><span class="typing-dot"></span><span class="typing-dot"></span>`);
+  await callChat(msg, predictionContext);
+}
+
+// ── Call Chat API ──
+async function callChat(message, context) {
+  try {
+    const r = await fetch(`${API}/chat`, {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ message, prediction_context: context })
+    });
+    const data = await r.json();
+    replaceTyping(data.reply);
+    tryGenerateVoice(data.reply);
+  } catch(e) {
+    replaceTyping('Sorry, I could not connect to the AI advisor. Please check your Groq API key.');
+  }
+}
+
+// ── Chat UI helpers ──
+function addMsg(role, html) {
+  const wrap = document.getElementById('chat-messages');
+  const div = document.createElement('div');
+  div.className = `msg msg-${role}`;
+  div.innerHTML = `
+    <div class="msg-avatar">${role==='aria'?'⬡':'👤'}</div>
+    <div class="msg-bubble">${html}</div>`;
+  wrap.appendChild(div);
+  wrap.scrollTop = wrap.scrollHeight;
+  return div;
+}
+
+function replaceTyping(text) {
+  const wrap = document.getElementById('chat-messages');
+  const last = wrap.querySelector('.msg-aria:last-child .msg-bubble');
+  if (last) last.innerHTML = text;
+  wrap.scrollTop = wrap.scrollHeight;
+}
+
+// ── Voice Generation ──
+async function tryGenerateVoice(text) {
+  try {
+    const r = await fetch(`${API}/tts`, {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ text })
+    });
+    if (!r.ok) return;
+    const blob = await r.blob();
+    lastAudioUrl = URL.createObjectURL(blob);
+    playAudio(lastAudioUrl);
+  } catch(e) { console.warn('TTS failed', e); }
+}
+
+function playAudio(url) {
+  if (currentAudio) { currentAudio.pause(); currentAudio = null; }
+  currentAudio = new Audio(url);
+  const bars = document.getElementById('audio-bars');
+  const btn = document.getElementById('voice-btn');
+  bars.classList.add('active');
+  btn.classList.add('playing');
+  currentAudio.play();
+  currentAudio.onended = () => {
+    bars.classList.remove('active');
+    btn.classList.remove('playing');
+  };
+}
+
+function replayVoice() {
+  if (lastAudioUrl) playAudio(lastAudioUrl);
+  else toast('No voice generated yet.');
+}
+</script>
+</body>
+</html>
