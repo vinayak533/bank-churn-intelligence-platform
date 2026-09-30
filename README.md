@@ -1,162 +1,198 @@
-# ⬡ Bank Churn Intelligence Platform
+# ARIA — Bank Churn Intelligence Platform
 
-> Predict customer churn · Explain with AI · Deliver voice insights
+An interactive prototype for estimating bank customer churn and helping staff discuss the result. A FastAPI service trains an XGBoost classifier from the included dataset; a static web interface collects customer details, displays the prediction, and offers optional AI-generated text and speech.
 
-![Python](https://img.shields.io/badge/Python-3.10+-blue?style=flat-square&logo=python&logoColor=white)
-![FastAPI](https://img.shields.io/badge/FastAPI-0.110-009688?style=flat-square&logo=fastapi&logoColor=white)
-![XGBoost](https://img.shields.io/badge/XGBoost-2.0-orange?style=flat-square)
-![LLaMA3](https://img.shields.io/badge/LLaMA_3-Groq_API-6f42c1?style=flat-square)
-![ElevenLabs](https://img.shields.io/badge/Voice-ElevenLabs-000000?style=flat-square)
-![License](https://img.shields.io/badge/License-MIT-yellow?style=flat-square)
+![ARIA platform overview](portfolio_images/01-platform-overview.png)
 
----
+*ARIA interface overview. Portfolio visuals are styled representations of the application; sample customer details are for demonstration.*
 
-## 📌 Overview
+## Contents
 
-The **Bank Churn Intelligence Platform** is a production-grade machine learning application that predicts whether a bank customer will churn, explains the result in plain English using **LLaMA 3**, and delivers the insight as natural speech via **ElevenLabs** — making AI genuinely accessible to non-technical business users.
+- [Project showcase](#project-showcase)
+- [Capabilities](#capabilities)
+- [Architecture and workflow](#architecture-and-workflow)
+- [Model approach](#model-approach)
+- [Technology stack](#technology-stack)
+- [Repository structure](#repository-structure)
+- [Getting started](#getting-started)
+- [API reference](#api-reference)
+- [Development and contribution](#development-and-contribution)
+- [Current scope](#current-scope)
 
-This project demonstrates end-to-end proficiency across machine learning, MLOps, REST API design, LLM integration, and full-stack engineering.
+## Project showcase
 
----
+| Customer profile | Churn assessment |
+|:---:|:---:|
+| [![Customer profile form](portfolio_images/02-customer-profile.png)](portfolio_images/02-customer-profile.png) | [![High-risk prediction result](portfolio_images/03-risk-prediction.png)](portfolio_images/03-risk-prediction.png) |
+| The form captures the inputs used by the classifier. | A real sample response from the running model: **99.92%** churn probability for the profile at left. |
 
-## ✨ Key Features
+| Model feature importance | AI advisor and voice |
+|:---:|:---:|
+| [![Global feature importance](portfolio_images/04-feature-importance.png)](portfolio_images/04-feature-importance.png) | [![AI advisor and voice interface](portfolio_images/05-ai-advisor-voice.png)](portfolio_images/05-ai-advisor-voice.png) |
+| The five highest global feature-importance values returned by the model. These are **not** customer-specific attribution scores. | The interface can request a plain-language explanation and synthesize it as speech. The conversation shown is illustrative. |
 
-| Feature | Details |
+## Capabilities
+
+| Area | Implemented behavior |
 |---|---|
-| 🔮 **Churn Prediction** | XGBoost on 10,000 records · SMOTE balancing · 87%+ AUC-ROC |
-| 🤖 **AI Explanation** | LLaMA 3 via Groq API converts predictions to business-friendly language |
-| 🔊 **Voice Intelligence** | ElevenLabs TTS delivers insights as natural human-like audio |
-| ⚡ **FastAPI Backend** | Scalable REST API with `/predict`, `/chat`, `/tts` endpoints |
-| 💎 **Interactive UI** | Real-time risk ring, feature importance bars, AI chatbot interface |
+| Prediction | Accepts customer attributes and returns a churn probability, binary prediction, and low/medium/high risk label. |
+| Model visibility | Returns the five largest **global** XGBoost feature-importance values. |
+| Advisor | Sends the prediction context and a staff question to Groq's `llama-3.3-70b-versatile` model. Requires `GROQ_API_KEY`. |
+| Speech | Sends advisor text to ElevenLabs and streams MP3 audio. Requires `ELEVENLABS_API_KEY`. |
+| Interface | Provides a customer form, risk visualization, factor bars, chat panel, and audio playback. |
+| API documentation | Exposes FastAPI's interactive OpenAPI UI at `/docs`. |
 
----
+Prediction works without external API keys. The web interface requests an advisor explanation after each prediction; chat and speech need their respective keys and network access.
 
-## 🛠 Tech Stack
+## Architecture and workflow
+
+```mermaid
+flowchart LR
+    UI[Static browser UI] -->|POST /predict| API[FastAPI]
+    CSV[Churn_Modelling.csv] -->|training at startup| API
+    API --> MODEL[StandardScaler + XGBoost]
+    MODEL --> API
+    API -->|probability, risk, global factors| UI
+    UI -->|POST /chat| API
+    API -->|chat completion| GROQ[Groq API]
+    UI -->|POST /tts| API
+    API -->|speech synthesis| ELEVEN[ElevenLabs API]
+    ELEVEN -->|MP3| UI
+```
+
+1. The backend starts from the `backend/` directory, reads the included CSV, trains the model, and saves `churn_model.pkl` and `scaler.pkl` in that directory.
+2. The browser collects customer values and calls `POST /predict`. The backend applies the fitted scaler and returns a probability, class, risk tier, and global feature ranking.
+3. The browser renders the result and automatically calls `POST /chat` for an explanation. Staff can ask follow-up questions in the same panel.
+4. When chat returns text, the browser calls `POST /tts` and plays the generated audio if ElevenLabs is configured.
+
+The frontend calls `http://127.0.0.1:8000` directly. The API permits cross-origin requests, so the static page can be served separately during local development.
+
+## Model approach
+
+The training function in [`backend/main.py`](backend/main.py) runs on API startup:
+
+1. Load the 10,000-row dataset and remove `RowNumber`, `CustomerId`, and `Surname`.
+2. Encode gender as a binary field and one-hot encode geography with one category omitted.
+3. Apply SMOTE, then make a stratified train/test split.
+4. Fit `StandardScaler` on the training features and train `XGBClassifier`.
+5. Keep the trained model and scaler in memory and write pickle artifacts locally.
+
+`/predict` reports the churn probability as a percentage. Risk is **LOW** at or below 35%, **MEDIUM** above 35% through 65%, and **HIGH** above 65%. The returned factor values come from `model.feature_importances_`; they describe the model overall, not why one customer received a particular score.
+
+**Evaluation note:** The repository does not currently publish a reproducible held-out metric report. SMOTE is applied before the train/test split in the current code, so the split should not be treated as an independent performance estimate. No accuracy or AUC claim is made here.
+
+## Technology stack
 
 | Layer | Technology |
 |---|---|
-| Machine Learning | XGBoost, Scikit-learn, SMOTE (imbalanced-learn) |
-| Backend | FastAPI, Uvicorn, Python 3.10+ |
-| AI / LLM | LLaMA 3 70B via Groq API |
-| Voice | ElevenLabs Text-to-Speech API |
-| Frontend | HTML5, CSS3, Vanilla JavaScript |
-| Data Processing | Pandas, NumPy |
+| Frontend | HTML, CSS, vanilla JavaScript |
+| API | Python, FastAPI, Uvicorn, Pydantic, HTTPX |
+| Data and model | Pandas, NumPy, scikit-learn, imbalanced-learn, XGBoost |
+| Optional integrations | Groq chat completions, ElevenLabs text-to-speech |
 
----
+## Repository structure
 
-## 📁 Project Structure
-
-```
+```text
 bank-churn-intelligence-platform/
 ├── backend/
-│   ├── main.py                 ← FastAPI app & all endpoints
-│   ├── requirements.txt        ← Python dependencies
-│   └── Churn_Modelling.csv     ← Dataset (10,000 customers)
+│   ├── main.py                 # API, training, prediction, chat, and speech
+│   ├── requirements.txt        # Declared Python dependencies
+│   └── Churn_Modelling.csv     # Included training data
 ├── frontend/
-│   └── index.html              ← Full web UI
-├── notebooks/
-│   └── churn_analysis.ipynb    ← EDA & model development
+│   └── index.html              # Static browser application
+├── portfolio_images/          # README visuals
+├── Scripts/                   # Checked-in environment scripts; not needed for setup
 └── README.md
 ```
 
----
+## Getting started
 
-## 🚀 Getting Started
+### Prerequisites
 
-### 1 · Clone the repository
+- Python 3.10 or newer
+- Optional: Groq and ElevenLabs API keys for chat and speech
+
+### 1. Clone and create an environment
+
 ```bash
 git clone https://github.com/vinayak533/bank-churn-intelligence-platform.git
 cd bank-churn-intelligence-platform
+python -m venv .venv
 ```
 
-### 2 · Install dependencies
+Activate it with `source .venv/bin/activate` on macOS/Linux or `.venv\Scripts\Activate.ps1` in PowerShell.
+
+### 2. Install dependencies
+
+```bash
+python -m pip install -r backend/requirements.txt python-dotenv
+```
+
+`backend/main.py` imports `python-dotenv`, but the current requirements file does not list it. The extra package above is required until that manifest is updated.
+
+### 3. Configure optional integrations
+
+Set `GROQ_API_KEY` for advisor responses and `ELEVENLABS_API_KEY` for speech. For example, in macOS/Linux shells:
+
+```bash
+export GROQ_API_KEY="your-groq-key"
+export ELEVENLABS_API_KEY="your-elevenlabs-key"
+```
+
+In PowerShell:
+
+```powershell
+$env:GROQ_API_KEY = "your-groq-key"
+$env:ELEVENLABS_API_KEY = "your-elevenlabs-key"
+```
+
+Keep keys out of commits. Prediction and `/health` work without them.
+
+### 4. Run the backend
+
+From the repository root:
+
 ```bash
 cd backend
-pip install -r requirements.txt
+python -m uvicorn main:app --host 127.0.0.1 --port 8000
 ```
 
-### 3 · Configure API keys
+Wait for model training to finish. Check `http://127.0.0.1:8000/health` for `"model_loaded": true`; API documentation is at `http://127.0.0.1:8000/docs`.
+
+### 5. Run the frontend
+
+In a second terminal, from the repository root:
 
 ```bash
-# macOS / Linux
-export GROQ_API_KEY=gsk_your_key_here
-
-# Windows
-set GROQ_API_KEY=gsk_your_key_here
+cd frontend
+python -m http.server 5500 --bind 127.0.0.1
 ```
 
-> Get your free Groq key at [console.groq.com](https://console.groq.com)  
-> Get your ElevenLabs key at [elevenlabs.io](https://elevenlabs.io) *(optional — for voice)*
+Open `http://127.0.0.1:5500/`. If you are already in `backend/`, return to the repository root before running the frontend commands.
 
-### 4 · Start the backend
-```bash
-uvicorn main:app --reload --port 8000
-```
-> ✅ The model trains automatically on startup (~10 seconds)  
-> ✅ Interactive API docs available at `http://127.0.0.1:8000/docs`
+## API reference
 
-### 5 · Launch the frontend
-Open `frontend/index.html` in your browser — no additional server required.
-
----
-
-## 📊 Model Performance
-
-| Metric | Score |
-|---|---|
-| AUC-ROC | 87%+ |
-| Accuracy | 85%+ |
-| Validation | 5-Fold Cross Validation |
-| Imbalance Handling | SMOTE Oversampling |
-
-**Key business insights surfaced by the model:**
-- Older customers carry significantly higher churn risk
-- Customers holding only one product are the most at-risk segment
-- Zero-balance accounts are strong churn indicators
-- Inactive members contribute disproportionately to churn
-- Germany shows a notably higher churn rate vs other regions
-
----
-
-## 🔌 API Reference
-
-| Method | Endpoint | Description |
+| Method | Route | Purpose |
 |---|---|---|
-| `GET` | `/health` | Service & model health check |
-| `POST` | `/predict` | Run churn prediction |
-| `POST` | `/chat` | LLaMA 3 plain-English explanation |
-| `POST` | `/tts` | ElevenLabs voice generation |
-| `GET` | `/docs` | Swagger interactive documentation |
+| `GET` | `/health` | Returns service status and whether a model is loaded. |
+| `POST` | `/predict` | Accepts customer fields and returns prediction, probability, risk, factors, and the submitted data. |
+| `POST` | `/chat` | Accepts `message` and `prediction_context`; returns an advisor reply. |
+| `POST` | `/tts` | Accepts `text`; streams MPEG audio. |
+| `GET` | `/docs` | Interactive OpenAPI documentation. |
+
+`/predict` expects numeric fields: `CreditScore`, `Gender`, `Age`, `Tenure`, `Balance`, `NumOfProducts`, `HasCrCard`, `IsActiveMember`, `EstimatedSalary`, `Geography_Germany`, and `Geography_Spain`. `Gender` is `1` for male and `0` for female; both geography flags are `0` for France. The web form handles this encoding automatically.
+
+## Development and contribution
+
+- Start the API from `backend/`: its dataset and artifact paths are relative to the working directory.
+- Use `/health`, `/docs`, and a sample `/predict` request as local smoke checks after changes.
+- Keep credentials out of source control, and describe any model or API contract changes in a pull request.
+- Automated tests and CI are not currently included in this repository. Contributions that add them are welcome.
+
+## Current scope
+
+This is an interactive project prototype. It retrains on every API startup, uses a fixed local API URL in the frontend, and has no deployment configuration or independent model evaluation report in the repository. The advisor and voice features also depend on external services. These boundaries are reflected here so the README can be used as an accurate implementation guide.
 
 ---
 
-## 💡 System Architecture
-
-```
-Customer Data Input
-        ↓
-  FastAPI Backend
-        ↓
-  XGBoost Model ──→ Churn Probability · Risk Level · Top Factors
-        ↓
-  LLaMA 3 (Groq) ──→ Plain English Explanation
-        ↓
-  ElevenLabs ──→ Voice Audio Output
-```
-
----
-
-## 👤 Author
-
-**Vinayak K V** — Data Scientist
-
-[![LinkedIn](https://img.shields.io/badge/LinkedIn-vinayak--kv--ds-0077B5?style=flat-square&logo=linkedin)](https://www.linkedin.com/in/vinayak-kv-ds)
-[![GitHub](https://img.shields.io/badge/GitHub-vinayak533-181717?style=flat-square&logo=github)](https://github.com/vinayak533)
-[![Portfolio](https://img.shields.io/badge/Portfolio-Visit-gold?style=flat-square)](https://vinayak533.github.io/VINAYAK_PORTFOLIO/)
-[![Email](https://img.shields.io/badge/Email-vinayakkvjob@gmail.com-D14836?style=flat-square&logo=gmail)](mailto:vinayakkvjob@gmail.com)
-
----
-
-## 📄 License
-
-This project is licensed under the [MIT License](LICENSE).
+Maintained by [Vinayak K V](https://github.com/vinayak533).
